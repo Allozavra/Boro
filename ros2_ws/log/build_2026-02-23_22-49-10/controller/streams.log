@@ -1,0 +1,68 @@
+[0.006s] Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/farall/Projects/Boro/ros2_ws/src/controller -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=/home/farall/Projects/Boro/ros2_ws/install/controller
+[0.058s] -- The C compiler identification is GNU 11.4.0
+[0.093s] -- The CXX compiler identification is GNU 11.4.0
+[0.098s] -- Detecting C compiler ABI info
+[0.154s] -- Detecting C compiler ABI info - done
+[0.158s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.158s] -- Detecting C compile features
+[0.158s] -- Detecting C compile features - done
+[0.159s] -- Detecting CXX compiler ABI info
+[0.217s] -- Detecting CXX compiler ABI info - done
+[0.221s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.221s] -- Detecting CXX compile features
+[0.221s] -- Detecting CXX compile features - done
+[0.222s] -- Found ament_cmake: 1.3.13 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.310s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[0.354s] -- Found rclcpp: 16.0.18 (/opt/ros/humble/share/rclcpp/cmake)
+[0.374s] -- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.375s] -- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.379s] -- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.385s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.393s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.420s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.422s] -- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.483s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+[0.497s] -- Found FastRTPS: /opt/ros/humble/include  
+[0.521s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.525s] -- Looking for pthread.h
+[0.582s] -- Looking for pthread.h - found
+[0.582s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[0.633s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[0.633s] -- Found Threads: TRUE  
+[0.662s] -- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[0.699s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[0.699s] -- Configured cppcheck include dirs: 
+[0.699s] -- Configured cppcheck exclude dirs and/or files: 
+[0.699s] -- Added test 'lint_cmake' to check CMake code style
+[0.700s] -- Added test 'uncrustify' to check C / C++ code style
+[0.700s] -- Configured uncrustify additional arguments: 
+[0.700s] -- Added test 'xmllint' to check XML markup files
+[0.701s] -- Configuring done
+[0.706s] -- Generating done
+[0.707s] -- Build files have been written to: /home/farall/Projects/Boro/ros2_ws/build/controller
+[0.713s] Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/farall/Projects/Boro/ros2_ws/src/controller -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=/home/farall/Projects/Boro/ros2_ws/install/controller
+[0.714s] Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/farall/Projects/Boro/ros2_ws/build/controller -- -j4 -l4
+[0.751s] [ 50%] [32mBuilding CXX object CMakeFiles/matlab_link.dir/src/matlab_link_node.cpp.o[0m
+[3.045s] [100%] [32m[1mLinking CXX executable matlab_link[0m
+[3.149s] [100%] Built target matlab_link
+[3.159s] Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/farall/Projects/Boro/ros2_ws/build/controller -- -j4 -l4
+[3.166s] Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/farall/Projects/Boro/ros2_ws/build/controller
+[3.170s] -- Install configuration: ""
+[3.170s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/lib/controller/matlab_link
+[3.174s] -- Set runtime path of "/home/farall/Projects/Boro/ros2_ws/install/controller/lib/controller/matlab_link" to ""
+[3.174s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/package_run_dependencies/controller
+[3.174s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/parent_prefix_path/controller
+[3.174s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/ament_prefix_path.sh
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/ament_prefix_path.dsv
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/path.sh
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/path.dsv
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.bash
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.sh
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.zsh
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.dsv
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/package.dsv
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/packages/controller
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/cmake/controllerConfig.cmake
+[3.175s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/cmake/controllerConfig-version.cmake
+[3.176s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/package.xml
+[3.176s] Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/farall/Projects/Boro/ros2_ws/build/controller

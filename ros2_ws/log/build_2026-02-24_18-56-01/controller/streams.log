@@ -1,0 +1,26 @@
+[0.037s] Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/farall/Projects/Boro/ros2_ws/build/controller -- -j4 -l4
+[0.131s] [35m[1mConsolidate compiler generated dependencies of target matlab_link[0m
+[0.163s] [ 50%] [32mBuilding CXX object CMakeFiles/matlab_link.dir/src/matlab_link_node.cpp.o[0m
+[5.526s] [100%] [32m[1mLinking CXX executable matlab_link[0m
+[5.844s] [100%] Built target matlab_link
+[5.855s] Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/farall/Projects/Boro/ros2_ws/build/controller -- -j4 -l4
+[5.865s] Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/farall/Projects/Boro/ros2_ws/build/controller
+[5.870s] -- Install configuration: ""
+[5.872s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/lib/controller/matlab_link
+[5.874s] -- Set runtime path of "/home/farall/Projects/Boro/ros2_ws/install/controller/lib/controller/matlab_link" to ""
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/package_run_dependencies/controller
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/parent_prefix_path/controller
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/ament_prefix_path.sh
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/ament_prefix_path.dsv
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/path.sh
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/path.dsv
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.bash
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.sh
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.zsh
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.dsv
+[5.875s] -- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/package.dsv
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/packages/controller
+[5.875s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/cmake/controllerConfig.cmake
+[5.876s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/cmake/controllerConfig-version.cmake
+[5.876s] -- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/package.xml
+[5.878s] Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/farall/Projects/Boro/ros2_ws/build/controller

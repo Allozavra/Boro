@@ -1,0 +1,22 @@
+[35m[1mConsolidate compiler generated dependencies of target matlab_link[0m
+[ 50%] [32mBuilding CXX object CMakeFiles/matlab_link.dir/src/matlab_link_node.cpp.o[0m
+[100%] [32m[1mLinking CXX executable matlab_link[0m
+[100%] Built target matlab_link
+-- Install configuration: ""
+-- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/lib/controller/matlab_link
+-- Set runtime path of "/home/farall/Projects/Boro/ros2_ws/install/controller/lib/controller/matlab_link" to ""
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/package_run_dependencies/controller
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/parent_prefix_path/controller
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/ament_prefix_path.sh
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/ament_prefix_path.dsv
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/path.sh
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/environment/path.dsv
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.bash
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.sh
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.zsh
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/local_setup.dsv
+-- Installing: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/package.dsv
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/ament_index/resource_index/packages/controller
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/cmake/controllerConfig.cmake
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/cmake/controllerConfig-version.cmake
+-- Up-to-date: /home/farall/Projects/Boro/ros2_ws/install/controller/share/controller/package.xml

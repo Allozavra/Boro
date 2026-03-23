@@ -1,0 +1,6 @@
+Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/farall/Projects/Boro/ros2_ws/src/controller -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=/home/farall/Projects/Boro/ros2_ws/install/controller
+Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/farall/Projects/Boro/ros2_ws/src/controller -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=/home/farall/Projects/Boro/ros2_ws/install/controller
+Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/farall/Projects/Boro/ros2_ws/build/controller -- -j4 -l4
+Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/farall/Projects/Boro/ros2_ws/build/controller -- -j4 -l4
+Invoking command in '/home/farall/Projects/Boro/ros2_ws/build/controller': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/farall/Projects/Boro/ros2_ws/build/controller
+Invoked command in '/home/farall/Projects/Boro/ros2_ws/build/controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/farall/Projects/Boro/ros2_ws/build/controller
