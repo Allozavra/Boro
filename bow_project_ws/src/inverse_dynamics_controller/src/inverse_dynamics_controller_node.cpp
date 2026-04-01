@@ -18,29 +18,19 @@
 #include "bow_interfaces/msg/bow_target.hpp"
 
 class InverseDynamicsControllerNode : public rclcpp::Node {
- public:
+public:
   InverseDynamicsControllerNode()
-      : Node("inverse_dynamics_controller_node"),
-        force_integral_(0.0),
-        target_received_(false),
-        in_contact_(false) {
+      : Node("inverse_dynamics_controller_node"), force_integral_(0.0),
+        target_received_(false), in_contact_(false) {
     urdf_path_ = declare_parameter<std::string>("urdf_path", "");
-    contact_frame_name_ = declare_parameter<std::string>("contact_frame_name", "bow_contact_frame");
+    contact_frame_name_ = declare_parameter<std::string>("contact_frame_name",
+                                                         "bow_contact_frame");
 
     input_topic_ = declare_parameter<std::string>("input_topic", "/sim_ros");
     output_topic_ = declare_parameter<std::string>("output_topic", "/ros_sim");
-    target_topic_ = declare_parameter<std::string>("target_topic", "/bow/target");
+    target_topic_ =
+        declare_parameter<std::string>("target_topic", "/bow/target");
     state_topic_ = declare_parameter<std::string>("state_topic", "/bow/state");
-
-    init_a_t_ = declare_parameter<double>("init_a_t", 0.0);
-    init_ad_t_ = declare_parameter<double>("init_ad_t", 0.0);
-    init_add_t_ = declare_parameter<double>("init_add_t", 0.0);
-    init_h_t_ = declare_parameter<double>("init_h_t", 0.0);
-    init_hd_t_ = declare_parameter<double>("init_hd_t", 0.0);
-    init_hdd_t_ = declare_parameter<double>("init_hdd_t", 0.0);
-    init_l_t_ = declare_parameter<double>("init_l_t", 0.0);
-    init_ld_t_ = declare_parameter<double>("init_ld_t", 0.0);
-    init_ldd_t_ = declare_parameter<double>("init_ldd_t", 0.0);
 
     Mu_ = declare_parameter<double>("Mu", 0.3);
     P_a_ = declare_parameter<double>("P_a", 0.0);
@@ -66,46 +56,44 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     normal_axis_index_ = declare_parameter<int>("normal_axis_index", 2);
     tangent_axis_index_ = declare_parameter<int>("tangent_axis_index", 0);
 
-    if (normal_axis_index_ < 0 || normal_axis_index_ > 2 || tangent_axis_index_ < 0 ||
-        tangent_axis_index_ > 2 || normal_axis_index_ == tangent_axis_index_) {
-      throw std::runtime_error(
-          "normal_axis_index and tangent_axis_index must "
-          "differ and be in [0,2]");
+    if (normal_axis_index_ < 0 || normal_axis_index_ > 2 ||
+        tangent_axis_index_ < 0 || tangent_axis_index_ > 2 ||
+        normal_axis_index_ == tangent_axis_index_) {
+      throw std::runtime_error("normal_axis_index and tangent_axis_index must "
+                               "differ and be in [0,2]");
     }
 
     initPinocchio(urdf_path_, contact_frame_name_);
 
     sub_sim_ = create_subscription<sensor_msgs::msg::JointState>(
         input_topic_, 10,
-        std::bind(&InverseDynamicsControllerNode::jointStateCallback, this, std::placeholders::_1));
+        std::bind(&InverseDynamicsControllerNode::jointStateCallback, this,
+                  std::placeholders::_1));
     sub_target_ = create_subscription<bow_interfaces::msg::BowTarget>(
         target_topic_, 10,
-        std::bind(&InverseDynamicsControllerNode::targetCallback, this, std::placeholders::_1));
+        std::bind(&InverseDynamicsControllerNode::targetCallback, this,
+                  std::placeholders::_1));
 
-    pub_effort_ = create_publisher<sensor_msgs::msg::JointState>(output_topic_, 10);
-    pub_state_ = create_publisher<bow_interfaces::msg::BowState>(state_topic_, 10);
+    pub_effort_ =
+        create_publisher<sensor_msgs::msg::JointState>(output_topic_, 10);
+    pub_state_ =
+        create_publisher<bow_interfaces::msg::BowState>(state_topic_, 10);
 
     last_time_ = now();
 
     active_target_.alpha_mode = bow_interfaces::msg::BowTarget::MODE_POSITION;
     active_target_.h_mode = bow_interfaces::msg::BowTarget::MODE_POSITION;
     active_target_.l_mode = bow_interfaces::msg::BowTarget::MODE_POSITION;
-    active_target_.alpha_target = init_a_t_;
-    active_target_.alpha_velocity_target = init_ad_t_;
-    active_target_.alpha_acceleration_target = init_add_t_;
-    active_target_.h_target = init_h_t_;
-    active_target_.h_velocity_target = init_hd_t_;
-    active_target_.h_acceleration_target = init_hdd_t_;
-    active_target_.l_target = init_l_t_;
-    active_target_.l_velocity_target = init_ld_t_;
-    active_target_.l_acceleration_target = init_ldd_t_;
+    active_target_.alpha_target = 0.0;
+    active_target_.h_target = 0.0;
+    active_target_.l_target = 0.0;
     active_target_.enable = true;
     active_target_.source_state = "BOOT_DEFAULT";
 
     RCLCPP_INFO(get_logger(), "InverseDynamicsControllerNode started");
   }
 
- private:
+private:
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_sim_;
   rclcpp::Subscription<bow_interfaces::msg::BowTarget>::SharedPtr sub_target_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_effort_;
@@ -154,24 +142,30 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   bow_interfaces::msg::BowTarget active_target_;
 
   static double clamp(double value, double low, double high) {
-    if (value < low) return low;
-    if (value > high) return high;
+    if (value < low)
+      return low;
+    if (value > high)
+      return high;
     return value;
   }
 
-  static bool vectorAllFinite(const Eigen::VectorXd& x) {
+  static bool vectorAllFinite(const Eigen::VectorXd &x) {
     for (int i = 0; i < x.size(); ++i) {
-      if (!std::isfinite(x[i])) return false;
+      if (!std::isfinite(x[i]))
+        return false;
     }
     return true;
   }
 
-  void initPinocchio(const std::string& urdf_path, const std::string& contact_frame_name) {
-    if (urdf_path.empty()) throw std::runtime_error("Parameter 'urdf_path' is empty");
+  void initPinocchio(const std::string &urdf_path,
+                     const std::string &contact_frame_name) {
+    if (urdf_path.empty())
+      throw std::runtime_error("Parameter 'urdf_path' is empty");
     pinocchio::urdf::buildModel(urdf_path, model_);
     data_ = pinocchio::Data(model_);
     if (!model_.existFrame(contact_frame_name)) {
-      throw std::runtime_error("Contact frame not found in URDF: " + contact_frame_name);
+      throw std::runtime_error("Contact frame not found in URDF: " +
+                               contact_frame_name);
     }
     contact_frame_id_ = model_.getFrameId(contact_frame_name);
     if (model_.nq != 3 || model_.nv != 3) {
@@ -179,36 +173,42 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     }
   }
 
-  Eigen::MatrixXd computeM(const Eigen::VectorXd& q) {
+  Eigen::MatrixXd computeM(const Eigen::VectorXd &q) {
     pinocchio::crba(model_, data_, q);
     data_.M.triangularView<Eigen::StrictlyLower>() =
         data_.M.transpose().triangularView<Eigen::StrictlyLower>();
     return data_.M;
   }
 
-  Eigen::VectorXd computeG(const Eigen::VectorXd& q) {
+  Eigen::VectorXd computeG(const Eigen::VectorXd &q) {
     return pinocchio::computeGeneralizedGravity(model_, data_, q);
   }
 
-  Eigen::VectorXd computeCqd(const Eigen::VectorXd& q, const Eigen::VectorXd& v) {
-    const Eigen::VectorXd nle = pinocchio::nonLinearEffects(model_, data_, q, v);
-    const Eigen::VectorXd g = pinocchio::computeGeneralizedGravity(model_, data_, q);
+  Eigen::VectorXd computeCqd(const Eigen::VectorXd &q,
+                             const Eigen::VectorXd &v) {
+    const Eigen::VectorXd nle =
+        pinocchio::nonLinearEffects(model_, data_, q, v);
+    const Eigen::VectorXd g =
+        pinocchio::computeGeneralizedGravity(model_, data_, q);
     return nle - g;
   }
 
-  void computeContactTerms(const Eigen::VectorXd& q, Eigen::VectorXd& Jn, Eigen::VectorXd& Jt) {
+  void computeContactTerms(const Eigen::VectorXd &q, Eigen::VectorXd &Jn,
+                           Eigen::VectorXd &Jt) {
     pinocchio::forwardKinematics(model_, data_, q);
     pinocchio::computeJointJacobians(model_, data_, q);
     pinocchio::updateFramePlacements(model_, data_);
 
-    const pinocchio::SE3& oMf = data_.oMf[contact_frame_id_];
-    Eigen::Vector3d normal_world = oMf.rotation().col(normal_axis_index_).normalized();
-    Eigen::Vector3d tangent_world = oMf.rotation().col(tangent_axis_index_).normalized();
+    const pinocchio::SE3 &oMf = data_.oMf[contact_frame_id_];
+    Eigen::Vector3d normal_world =
+        oMf.rotation().col(normal_axis_index_).normalized();
+    Eigen::Vector3d tangent_world =
+        oMf.rotation().col(tangent_axis_index_).normalized();
 
     pinocchio::Data::Matrix6x J6(6, model_.nv);
     J6.setZero();
-    pinocchio::getFrameJacobian(model_, data_, contact_frame_id_, pinocchio::ReferenceFrame::WORLD,
-                                J6);
+    pinocchio::getFrameJacobian(model_, data_, contact_frame_id_,
+                                pinocchio::ReferenceFrame::WORLD, J6);
     const Eigen::MatrixXd Jv = J6.bottomRows(3);
     Jn = Jv.transpose() * normal_world;
     Jt = Jv.transpose() * tangent_world;
@@ -220,60 +220,52 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   }
 
   double computeAdd(double a, double ad) const {
-    switch (active_target_.alpha_mode) {
-      case bow_interfaces::msg::BowTarget::MODE_OFF:
-        return 0.0;
-      case bow_interfaces::msg::BowTarget::MODE_POSITION:
-      default:
-        double qdd = active_target_.alpha_acceleration_target +
-                     D_a_ * (active_target_.alpha_velocity_target - ad) +
-                     P_a_ * (active_target_.alpha_target - a);
-        return clamp(qdd, -q1_dd_max_, q1_dd_max_);
-    }
+    double qdd = active_target_.alpha_acceleration_target +
+                 D_a_ * (active_target_.alpha_velocity_target - ad) +
+                 P_a_ * (active_target_.alpha_target - a);
+    return clamp(qdd, -q1_dd_max_, q1_dd_max_);
   }
 
   double computeHdd(double h, double hd, double F_meas, double dt) {
     switch (active_target_.h_mode) {
-      case bow_interfaces::msg::BowTarget::MODE_OFF:
-        force_integral_ = 0.0;
-        return 0.0;
-      case bow_interfaces::msg::BowTarget::MODE_FORCE: {
-        const double force_error = active_target_.force_target - F_meas;
-        force_integral_ += force_error * dt;
-        force_integral_ = clamp(force_integral_, -F_integral_limit_, F_integral_limit_);
-        return clamp(P_F_ * force_error + I_F_ * force_integral_ - D_F_ * hd, -q2_dd_max_,
-                     q2_dd_max_);
-      }
-      case bow_interfaces::msg::BowTarget::MODE_VELOCITY:
-        force_integral_ = 0.0;
-        return clamp(P_vh_ * (active_target_.h_velocity_target - hd), -q2_dd_max_, q2_dd_max_);
-      case bow_interfaces::msg::BowTarget::MODE_POSITION:
-      default:
-        force_integral_ = 0.0;
-        return clamp(active_target_.h_acceleration_target +
-                         D_h_ * (active_target_.h_velocity_target - hd) +
-                         P_h_ * (active_target_.h_target - h),
-                     -q2_dd_max_, q2_dd_max_);
+    case bow_interfaces::msg::BowTarget::MODE_FORCE: {
+      const double force_error = active_target_.force_target - F_meas;
+      force_integral_ += force_error * dt;
+      force_integral_ =
+          clamp(force_integral_, -F_integral_limit_, F_integral_limit_);
+      return clamp(P_F_ * force_error + I_F_ * force_integral_ - D_F_ * hd,
+                   -q2_dd_max_, q2_dd_max_);
+    }
+    case bow_interfaces::msg::BowTarget::MODE_VELOCITY:
+      force_integral_ = 0.0;
+      return clamp(P_vh_ * (active_target_.h_velocity_target - hd), -q2_dd_max_,
+                   q2_dd_max_);
+    case bow_interfaces::msg::BowTarget::MODE_POSITION:
+    default:
+      force_integral_ = 0.0;
+      return clamp(active_target_.h_acceleration_target +
+                       D_h_ * (active_target_.h_velocity_target - hd) +
+                       P_h_ * (active_target_.h_target - h),
+                   -q2_dd_max_, q2_dd_max_);
     }
   }
 
   double computeLdd(double l, double ld) const {
     switch (active_target_.l_mode) {
-      case bow_interfaces::msg::BowTarget::MODE_OFF:
-        return 0.0;
-      case bow_interfaces::msg::BowTarget::MODE_VELOCITY:
-        return clamp(P_vl_ * (active_target_.l_velocity_target - ld), -q3_dd_max_, q3_dd_max_);
-      case bow_interfaces::msg::BowTarget::MODE_POSITION:
-      default:
-        return clamp(active_target_.l_acceleration_target +
-                         D_l_ * (active_target_.l_velocity_target - ld) +
-                         P_l_ * (active_target_.l_target - l),
-                     -q3_dd_max_, q3_dd_max_);
+    case bow_interfaces::msg::BowTarget::MODE_VELOCITY:
+      return clamp(P_vl_ * (active_target_.l_velocity_target - ld), -q3_dd_max_,
+                   q3_dd_max_);
+    case bow_interfaces::msg::BowTarget::MODE_POSITION:
+    default:
+      return clamp(active_target_.l_acceleration_target +
+                       D_l_ * (active_target_.l_velocity_target - ld) +
+                       P_l_ * (active_target_.l_target - l),
+                   -q3_dd_max_, q3_dd_max_);
     }
   }
 
-  void publishState(const rclcpp::Time& now, double a, double h, double l, double ad, double hd,
-                    double ld, double F_meas) {
+  void publishState(const rclcpp::Time &now, double a, double h, double l,
+                    double ad, double hd, double ld, double F_meas) {
     bow_interfaces::msg::BowState state_msg;
     state_msg.header.stamp = now;
     state_msg.alpha = a;
@@ -292,15 +284,18 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   }
 
   void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg) {
-    if (msg->position.size() < 3 || msg->velocity.size() < 3 || msg->effort.size() < 4) {
-      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
-                           "Input JointState must contain position[3], velocity[3], effort[4]");
+    if (msg->position.size() < 3 || msg->velocity.size() < 3 ||
+        msg->effort.size() < 4) {
+      RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 1000,
+          "Input JointState must contain position[3], velocity[3], effort[4]");
       return;
     }
 
     const rclcpp::Time now_t = now();
     double dt = (now_t - last_time_).seconds();
-    if (!std::isfinite(dt) || dt <= 0.0 || dt > 0.1) dt = 0.001;
+    if (!std::isfinite(dt) || dt <= 0.0 || dt > 0.1)
+      dt = 0.001;
     last_time_ = now_t;
 
     const double a = msg->position[0];
@@ -311,8 +306,9 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     const double ld = msg->velocity[2];
     const double F_meas = msg->effort[3];
 
-    if (!std::isfinite(a) || !std::isfinite(h) || !std::isfinite(l) || !std::isfinite(ad) ||
-        !std::isfinite(hd) || !std::isfinite(ld) || !std::isfinite(F_meas)) {
+    if (!std::isfinite(a) || !std::isfinite(h) || !std::isfinite(l) ||
+        !std::isfinite(ad) || !std::isfinite(hd) || !std::isfinite(ld) ||
+        !std::isfinite(F_meas)) {
       RCLCPP_ERROR(get_logger(), "Input contains NaN/Inf");
       return;
     }
@@ -353,8 +349,9 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     Eigen::VectorXd Jn(3), Jt(3);
     computeContactTerms(q, Jn, Jt);
 
-    if (!M.allFinite() || !vectorAllFinite(Cqd) || !vectorAllFinite(G) || !vectorAllFinite(Jn) ||
-        !vectorAllFinite(Jt) || !vectorAllFinite(qdd_t)) {
+    if (!M.allFinite() || !vectorAllFinite(Cqd) || !vectorAllFinite(G) ||
+        !vectorAllFinite(Jn) || !vectorAllFinite(Jt) ||
+        !vectorAllFinite(qdd_t)) {
       RCLCPP_ERROR(get_logger(), "NaN/Inf in model terms");
       return;
     }
@@ -380,11 +377,11 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   }
 };
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
   try {
     rclcpp::spin(std::make_shared<InverseDynamicsControllerNode>());
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     std::cerr << "Fatal error: " << e.what() << std::endl;
   }
   rclcpp::shutdown();

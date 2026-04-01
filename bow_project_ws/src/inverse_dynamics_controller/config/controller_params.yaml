@@ -1,0 +1,31 @@
+inverse_dynamics_controller_node:
+  ros__parameters:
+    urdf_path: /home/farall/Projects/Boro/boro.urdf
+    contact_frame_name: bow_contact_frame
+    input_topic: /sim_ros
+    output_topic: /ros_sim
+    target_topic: /bow/target
+    state_topic: /bow/state
+    Mu: 0.3
+    P_a: 280.0
+    D_a: 26.7
+    P_h: 80.0
+    D_h: 20.0
+    P_l: 80.0
+    D_l: 20.0
+    P_vh: 40.0
+    P_vl: 30.0
+    P_F: 2.0
+    I_F: 10.0
+    D_F: 8.0
+    F_touch: 0.10
+    F_lose: 0.05
+    force_integral_limit: 10.0
+    tau_a_max: 1000.0
+    tau_h_max: 10.0
+    tau_l_max: 1000.0
+    q1_dd_max: 100.0
+    q2_dd_max: 50.0
+    q3_dd_max: 50.0
+    normal_axis_index: 2
+    tangent_axis_index: 0
