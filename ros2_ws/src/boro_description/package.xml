@@ -1,18 +1,12 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>boro_task_manager</name>
+  <name>boro_description</name>
   <version>0.0.0</version>
-  <description>Task manager for bowing system</description>
-
+  <description>URDF description for Boro robot</description>
   <maintainer email="you@example.com">you</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <depend>rclcpp</depend>
-  <depend>sensor_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>boro_interfaces</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

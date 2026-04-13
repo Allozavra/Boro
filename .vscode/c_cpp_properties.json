@@ -7,7 +7,6 @@
       },
       "includePath": [
         "/opt/ros/humble/include/**",
-        "/home/farall/Projects/Boro/ros2_ws/src/controller/include/**",
         "/usr/include/**"
       ],
       "name": "ros2",

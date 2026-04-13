@@ -1,0 +1,66 @@
+inverse_dynamics_controller_node:
+  ros__parameters:
+
+    # Конфигурация робота
+    urdf_path: ""
+    contact_frame_name: "bow_contact_frame"
+
+    # Топики
+    input_topic: "/sim_ros"
+    output_topic: "/ros_sim"
+    target_topic: "/bow/target"
+    state_topic: "/bow/state"
+
+    # Начальные цели 
+    init_a_t: 0.0
+    init_ad_t: 0.0
+    init_add_t: 0.0
+
+    init_h_t: 0.0
+    init_hd_t: 0.0
+    init_hdd_t: 0.0
+
+    init_l_t: 0.0
+    init_ld_t: 0.0
+    init_ldd_t: 0.0
+
+    # Физика
+    Mu: 0.3
+
+    # Позиционные регуляторы
+    P_a: 20.0
+    D_a: 9.0
+
+    P_h: 64.0
+    D_h: 16.0
+
+    P_l: 25.0
+    D_l: 10.0
+
+    # Скоростные
+    P_vh: 6.0
+    P_vl: 8.0
+
+    # Силовое управление
+    P_F: 0.8
+    I_F: 0.5
+    D_F: 6.0
+
+    # Контакт
+    F_touch: 0.10
+    F_lose: 0.05
+
+    # Ограничения
+    force_integral_limit: 1000.0
+
+    tau_a_max: 1000.0
+    tau_h_max: 1000.0
+    tau_l_max: 1000.0
+
+    q1_dd_max: 1000.0
+    q2_dd_max: 1000.0
+    q3_dd_max: 1000.0
+
+    # Оси контактной рамки
+    normal_axis_index: 2
+    tangent_axis_index: 0

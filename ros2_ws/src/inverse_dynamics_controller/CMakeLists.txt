@@ -10,6 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(pinocchio REQUIRED)
+find_package(boro_interfaces REQUIRED)
 
 add_executable(inverse_dynamics_controller_node
   src/inverse_dynamics_controller_node.cpp
@@ -22,6 +23,7 @@ target_include_directories(inverse_dynamics_controller_node PRIVATE
 ament_target_dependencies(inverse_dynamics_controller_node
   rclcpp
   sensor_msgs
+  boro_interfaces
 )
 
 target_link_libraries(inverse_dynamics_controller_node
@@ -34,6 +36,10 @@ install(TARGETS
 )
 
 install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY config launch config
   DESTINATION share/${PROJECT_NAME}
 )
 

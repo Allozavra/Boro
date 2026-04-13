@@ -1,0 +1,45 @@
+boro_task_manager_node:
+  ros__parameters:
+    input_state_topic: /bow/state
+    command_topic: /bow/command
+    target_topic: /bow/target
+    event_topic: /bow/event
+    loop_hz: 200.0
+    startup_wait_sec: 1.0
+    home_alpha: 0.0
+    home_h: 0.03
+    home_l: 0.0
+    safe_h: 0.020
+    start_l: 0.1
+    finish_l: -0.1
+    home_tol_alpha: 0.05
+    home_tol_h: 0.05
+    home_tol_l: 0.05
+    force_tol: 0.05
+    force_stable_time_sec: 0.20
+    force_contact_on: 0.10
+    force_contact_off: 0.01
+    contact_reached_hold_sec: 0.1
+    contact_lost_hold_sec: 10.0
+    contact_settle_time_sec: 10.0
+    contact_h_tolerance: 0.01
+    contact_ready_force_min: 0.01
+
+    approach_velocity_default: -0.001
+    force_max: 10.0
+    lower_timeout_sec: 1000.0
+    raise_timeout_sec: 1000.0
+    home_timeout_sec: 1000.0
+    h_min: -0.11
+    h_max: 0.11
+    l_min: -0.41
+    l_max: 0.41
+    approach_velocity_default: -0.001
+    raise_velocity_default: 0.02
+    stroke_velocity_default: 0.05
+    desired_force_default: 0.40
+    strings:
+      G: -0.2617993878
+      D: -0.0872664626
+      A: 0.0872664626
+      E: 0.2617993878

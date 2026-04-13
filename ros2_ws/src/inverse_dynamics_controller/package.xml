@@ -11,6 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
+  <depend>boro_interfaces</depend>
 
   <build_depend>eigen</build_depend>
   <exec_depend>eigen</exec_depend>

@@ -14,8 +14,8 @@
 #include <string>
 #include <vector>
 
-#include "bow_interfaces/msg/bow_state.hpp"
-#include "bow_interfaces/msg/bow_target.hpp"
+#include "boro_interfaces/msg/bow_state.hpp"
+#include "boro_interfaces/msg/bow_target.hpp"
 
 class InverseDynamicsControllerNode : public rclcpp::Node {
  public:
@@ -41,6 +41,7 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     init_l_t_ = declare_parameter<double>("init_l_t", 0.0);
     init_ld_t_ = declare_parameter<double>("init_ld_t", 0.0);
     init_ldd_t_ = declare_parameter<double>("init_ldd_t", 0.0);
+    init_force_t_ = declare_parameter<double>("init_force_t", 0.0);
 
     Mu_ = declare_parameter<double>("Mu", 0.3);
     P_a_ = declare_parameter<double>("P_a", 0.0);
@@ -65,6 +66,7 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     q3_dd_max_ = declare_parameter<double>("q3_dd_max", 1000.0);
     normal_axis_index_ = declare_parameter<int>("normal_axis_index", 2);
     tangent_axis_index_ = declare_parameter<int>("tangent_axis_index", 0);
+    alpha_ctrl_ = declare_parameter<double>("alpha_ctrl", 0.0);
 
     if (normal_axis_index_ < 0 || normal_axis_index_ > 2 || tangent_axis_index_ < 0 ||
         tangent_axis_index_ > 2 || normal_axis_index_ == tangent_axis_index_) {
@@ -78,24 +80,25 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     sub_sim_ = create_subscription<sensor_msgs::msg::JointState>(
         input_topic_, 10,
         std::bind(&InverseDynamicsControllerNode::jointStateCallback, this, std::placeholders::_1));
-    sub_target_ = create_subscription<bow_interfaces::msg::BowTarget>(
+    sub_target_ = create_subscription<boro_interfaces::msg::BowTarget>(
         target_topic_, 10,
         std::bind(&InverseDynamicsControllerNode::targetCallback, this, std::placeholders::_1));
 
     pub_effort_ = create_publisher<sensor_msgs::msg::JointState>(output_topic_, 10);
-    pub_state_ = create_publisher<bow_interfaces::msg::BowState>(state_topic_, 10);
+    pub_state_ = create_publisher<boro_interfaces::msg::BowState>(state_topic_, 10);
 
     last_time_ = now();
 
-    active_target_.alpha_mode = bow_interfaces::msg::BowTarget::MODE_POSITION;
-    active_target_.h_mode = bow_interfaces::msg::BowTarget::MODE_POSITION;
-    active_target_.l_mode = bow_interfaces::msg::BowTarget::MODE_POSITION;
+    active_target_.alpha_mode = boro_interfaces::msg::BowTarget::MODE_POSITION;
+    active_target_.h_mode = boro_interfaces::msg::BowTarget::MODE_FORCE;
+    active_target_.l_mode = boro_interfaces::msg::BowTarget::MODE_POSITION;
     active_target_.alpha_target = init_a_t_;
     active_target_.alpha_velocity_target = init_ad_t_;
     active_target_.alpha_acceleration_target = init_add_t_;
     active_target_.h_target = init_h_t_;
     active_target_.h_velocity_target = init_hd_t_;
     active_target_.h_acceleration_target = init_hdd_t_;
+    active_target_.force_target = init_force_t_;
     active_target_.l_target = init_l_t_;
     active_target_.l_velocity_target = init_ld_t_;
     active_target_.l_acceleration_target = init_ldd_t_;
@@ -107,9 +110,9 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
  private:
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_sim_;
-  rclcpp::Subscription<bow_interfaces::msg::BowTarget>::SharedPtr sub_target_;
+  rclcpp::Subscription<boro_interfaces::msg::BowTarget>::SharedPtr sub_target_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_effort_;
-  rclcpp::Publisher<bow_interfaces::msg::BowState>::SharedPtr pub_state_;
+  rclcpp::Publisher<boro_interfaces::msg::BowState>::SharedPtr pub_state_;
 
   pinocchio::Model model_;
   pinocchio::Data data_;
@@ -124,6 +127,17 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
   int normal_axis_index_{};
   int tangent_axis_index_{};
+
+  double init_a_t_;
+  double init_ad_t_;
+  double init_add_t_;
+  double init_h_t_;
+  double init_hd_t_;
+  double init_hdd_t_;
+  double init_l_t_;
+  double init_ld_t_;
+  double init_ldd_t_;
+  double init_force_t_;
 
   double Mu_{};
   double P_a_{};
@@ -146,12 +160,14 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   double q1_dd_max_{};
   double q2_dd_max_{};
   double q3_dd_max_{};
+  double alpha_ctrl_{};
+  double F_ctrl_{0.0};
 
   double force_integral_;
   bool target_received_;
   bool in_contact_;
   rclcpp::Time last_time_;
-  bow_interfaces::msg::BowTarget active_target_;
+  boro_interfaces::msg::BowTarget active_target_;
 
   static double clamp(double value, double low, double high) {
     if (value < low) return low;
@@ -214,16 +230,16 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     Jt = Jv.transpose() * tangent_world;
   }
 
-  void targetCallback(const bow_interfaces::msg::BowTarget::SharedPtr msg) {
+  void targetCallback(const boro_interfaces::msg::BowTarget::SharedPtr msg) {
     active_target_ = *msg;
     target_received_ = true;
   }
 
   double computeAdd(double a, double ad) const {
     switch (active_target_.alpha_mode) {
-      case bow_interfaces::msg::BowTarget::MODE_OFF:
+      case boro_interfaces::msg::BowTarget::MODE_OFF:
         return 0.0;
-      case bow_interfaces::msg::BowTarget::MODE_POSITION:
+      case boro_interfaces::msg::BowTarget::MODE_POSITION:
       default:
         double qdd = active_target_.alpha_acceleration_target +
                      D_a_ * (active_target_.alpha_velocity_target - ad) +
@@ -234,20 +250,21 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
   double computeHdd(double h, double hd, double F_meas, double dt) {
     switch (active_target_.h_mode) {
-      case bow_interfaces::msg::BowTarget::MODE_OFF:
+      case boro_interfaces::msg::BowTarget::MODE_OFF:
         force_integral_ = 0.0;
         return 0.0;
-      case bow_interfaces::msg::BowTarget::MODE_FORCE: {
-        const double force_error = active_target_.force_target - F_meas;
+      case boro_interfaces::msg::BowTarget::MODE_FORCE: {
+        F_ctrl_ = alpha_ctrl_ * F_ctrl_ + (1.0 - alpha_ctrl_) * F_meas;
+        const double force_error = -active_target_.force_target + F_ctrl_;
         force_integral_ += force_error * dt;
         force_integral_ = clamp(force_integral_, -F_integral_limit_, F_integral_limit_);
         return clamp(P_F_ * force_error + I_F_ * force_integral_ - D_F_ * hd, -q2_dd_max_,
                      q2_dd_max_);
       }
-      case bow_interfaces::msg::BowTarget::MODE_VELOCITY:
+      case boro_interfaces::msg::BowTarget::MODE_VELOCITY:
         force_integral_ = 0.0;
         return clamp(P_vh_ * (active_target_.h_velocity_target - hd), -q2_dd_max_, q2_dd_max_);
-      case bow_interfaces::msg::BowTarget::MODE_POSITION:
+      case boro_interfaces::msg::BowTarget::MODE_POSITION:
       default:
         force_integral_ = 0.0;
         return clamp(active_target_.h_acceleration_target +
@@ -259,11 +276,11 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
   double computeLdd(double l, double ld) const {
     switch (active_target_.l_mode) {
-      case bow_interfaces::msg::BowTarget::MODE_OFF:
+      case boro_interfaces::msg::BowTarget::MODE_OFF:
         return 0.0;
-      case bow_interfaces::msg::BowTarget::MODE_VELOCITY:
+      case boro_interfaces::msg::BowTarget::MODE_VELOCITY:
         return clamp(P_vl_ * (active_target_.l_velocity_target - ld), -q3_dd_max_, q3_dd_max_);
-      case bow_interfaces::msg::BowTarget::MODE_POSITION:
+      case boro_interfaces::msg::BowTarget::MODE_POSITION:
       default:
         return clamp(active_target_.l_acceleration_target +
                          D_l_ * (active_target_.l_velocity_target - ld) +
@@ -274,7 +291,7 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
   void publishState(const rclcpp::Time& now, double a, double h, double l, double ad, double hd,
                     double ld, double F_meas) {
-    bow_interfaces::msg::BowState state_msg;
+    boro_interfaces::msg::BowState state_msg;
     state_msg.header.stamp = now;
     state_msg.alpha = a;
     state_msg.h = h;
@@ -359,8 +376,9 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
       return;
     }
 
-    const double F_n = std::max(0.0, F_meas);
-    const double F_t_contact = Mu_ * F_n;
+    const double F_n = -std::max(0.0, F_meas);
+    // const double F_t_contact = Mu_ * F_n;
+    const double F_t_contact = 0;
     Eigen::VectorXd tau = M * qdd_t + Cqd + G - Jn * F_n - Jt * F_t_contact;
 
     if (!vectorAllFinite(tau)) {
@@ -377,6 +395,15 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     out_msg.name = {"joint_a", "joint_h", "joint_l"};
     out_msg.effort = {tau(0), tau(1), tau(2)};
     pub_effort_->publish(out_msg);
+    // RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 200,
+    //                      "modes a/h/l = %u %u %u | qdd = [%.3f %.3f %.3f] | err = [%.3f %.3f
+    //                      %.3f]", active_target_.alpha_mode, active_target_.h_mode,
+    //                      active_target_.l_mode, q1_dd, q2_dd, q3_dd, active_target_.alpha_target
+    //                      - a, active_target_.h_target - h, active_target_.l_target - l);
+    // RCLCPP_INFO(get_logger(),
+    //             "Gains: P_a=%.3f D_a=%.3f | P_h=%.3f D_h=%.3f | P_l=%.3f D_l=%.3f | P_vh=%.3f "
+    //             "P_vl=%.3f | P_F=%.3f I_F=%.3f D_F=%.3f",
+    //             P_a_, D_a_, P_h_, D_h_, P_l_, D_l_, P_vh_, P_vl_, P_F_, I_F_, D_F_);
   }
 };
 
