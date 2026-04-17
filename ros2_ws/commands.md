@@ -1,6 +1,6 @@
 source install/setup.bash
 
-colcon build --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 
 
 ros2 launch inverse_dynamics_controller controller_launch.py
 ros2 launch boro_task_manager full_system.launch.py

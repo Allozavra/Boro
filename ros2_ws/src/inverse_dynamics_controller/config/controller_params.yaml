@@ -28,23 +28,32 @@ inverse_dynamics_controller_node:
     Mu: 0.3
 
     # Позиционные регуляторы
-    P_a: 20.0
-    D_a: 9.0
+    P_a_free: 20.0
+    I_a_free: 0.0
+    D_a_free: 9.0
+
+    P_a_contact: 120.0
+    I_a_contact: 10.0
+    D_a_contact: 1000.0
 
     P_h: 64.0
     D_h: 16.0
+    P_vh: 10.0
 
     P_l: 25.0
     D_l: 10.0
-
-    # Скоростные
-    P_vh: 6.0
-    P_vl: 8.0
+    P_vl: 100.0
+    I_vl: 50.0
 
     # Силовое управление
-    P_F: 0.8
-    I_F: 0.5
-    D_F: 6.0
+    P_F: 10.0
+    I_F: 4.0
+    D_F: 0.5
+    K_a_contact_ff: 100.0
+
+    alpha_ctrl: 0.0
+    alpha_integral_limit: 1000.0
+
 
     # Контакт
     F_touch: 0.10

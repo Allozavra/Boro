@@ -39,6 +39,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
 
     force_contact_on_ = declare_parameter<double>("force_contact_on", 0.10);
     force_contact_off_ = declare_parameter<double>("force_contact_off", 0.03);
+    force_h_offset_ = declare_parameter<double>("force_h_offset", 0.001);
 
     contact_reached_hold_sec_ = declare_parameter<double>("contact_reached_hold_sec", 0.015);
     contact_lost_hold_sec_ = declare_parameter<double>("contact_lost_hold_sec", 0.040);
@@ -58,7 +59,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
     l_min_ = declare_parameter<double>("l_min", -0.20);
     l_max_ = declare_parameter<double>("l_max", 0.20);
 
-    approach_velocity_default_ = declare_parameter<double>("approach_velocity_default", -0.001);
+    approach_velocity_default_ = declare_parameter<double>("approach_velocity_default", -0.01);
     raise_velocity_default_ = declare_parameter<double>("raise_velocity_default", 0.02);
     stroke_velocity_default_ = declare_parameter<double>("stroke_velocity_default", 0.05);
     desired_force_default_ = declare_parameter<double>("desired_force_default", 0.4);
@@ -99,18 +100,19 @@ class BoroTaskManagerNode : public rclcpp::Node {
     RAISE_BOW,
     RETURN_HOME,
     FINISH,
-    ERROR_HOLD
+    ERROR_HOLD,
+    TESTING
   };
 
   struct PendingCommand {
     uint8_t command{boro_interfaces::msg::TaskManagerCommand::CMD_NONE};
-    std::string selected_string{"D"};
+    std::string selected_string{"E"};
     double desired_alpha{0.0};
     double desired_force{0.4};
     double bow_velocity{0.05};
     double bow_range_min{-0.16};
     double bow_range_max{0.16};
-    double h_approach_velocity{-0.001};
+    double h_approach_velocity{-0.01};
     double h_raise_velocity{0.02};
     bool auto_continue{true};
   } cmd_;
@@ -126,7 +128,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
   std::string target_topic_;
   std::string event_topic_;
 
-  bool all_auto_continue{true};  // Flag
+  bool all_auto_continue_{true};  // Flag
 
   double loop_hz_{};
   double startup_wait_sec_{};
@@ -147,6 +149,8 @@ class BoroTaskManagerNode : public rclcpp::Node {
   double force_tol_{};
   double force_contact_on_{};
   double force_contact_off_{};
+  double force_h_offset_{};
+
   double contact_reached_hold_sec_{};
   double contact_lost_hold_sec_{};
 
@@ -192,7 +196,6 @@ class BoroTaskManagerNode : public rclcpp::Node {
   double contact_lost_accum_sec_{0.0};
 
   double contact_h_{0.0};
-  bool contact_h_valid_{false};
 
   uint32_t error_code_{boro_interfaces::msg::BowEvent::NONE};
   std::string error_text_;
@@ -264,8 +267,6 @@ class BoroTaskManagerNode : public rclcpp::Node {
 
     contact_reached_accum_sec_ = 0.0;
     contact_lost_accum_sec_ = 0.0;
-
-    // contact_h_valid_ = false;
   }
 
   void transitionTo(TaskState next, const std::string& why) {
@@ -438,10 +439,10 @@ class BoroTaskManagerNode : public rclcpp::Node {
     }
     prev_update_time = now_t;
 
-    if (latest_state_.force > force_max_) {
-      fail(boro_interfaces::msg::BowEvent::ERROR, "normal force above limit");
-      return;
-    }
+    // if (latest_state_.force > force_max_) {
+    //   fail(boro_interfaces::msg::BowEvent::ERROR, "normal force above limit");
+    //   return;
+    // }
 
     if (latest_state_.h < h_min_ || latest_state_.h > h_max_ || latest_state_.l < l_min_ ||
         latest_state_.l > l_max_) {
@@ -465,8 +466,34 @@ class BoroTaskManagerNode : public rclcpp::Node {
             publishEvent(boro_interfaces::msg::BowEvent::READY, "task manager ready", false);
             ready_sent_ = true;
           }
-          transitionTo(TaskState::HOME, "startup timer elapsed");
+          // transitionTo(TaskState::HOME, "startup timer elapsed");
+          transitionTo(TaskState::ROTATING, "startup timer elapsed");
+          // transitionTo(TaskState::TESTING, "startup timer elapsed");
         }
+      } break;
+      case TaskState::TESTING: {
+        target.alpha_target = home_alpha_;
+        target.h_mode = boro_interfaces::msg::BowTarget::MODE_POSITION;
+        target.h_target = home_h_;
+        target.l_mode = boro_interfaces::msg::BowTarget::MODE_VELOCITY;
+        const double v = 0.1;
+        target.l_velocity_target = v;
+
+        const double l_end = (v >= 0.0) ? cmd_.bow_range_max : cmd_.bow_range_min;
+        const bool reached_end =
+            (v >= 0.0 && latest_state_.l >= l_end) || (v < 0.0 && latest_state_.l <= l_end);
+
+        if (reached_end) {
+          if (!config_played_event_sent_) {
+            publishEvent(boro_interfaces::msg::BowEvent::CONFIG_PLAYED,
+                         "configured stroke completed", false);
+            config_played_event_sent_ = true;
+          }
+          if (cmd_.auto_continue || all_auto_continue_) {
+            transitionTo(TaskState::RAISE_BOW, "stroke finished");
+          }
+        }
+
       } break;
 
       case TaskState::HOME: {
@@ -477,8 +504,8 @@ class BoroTaskManagerNode : public rclcpp::Node {
         if (homeReached() && !home_event_sent_) {
           publishEvent(boro_interfaces::msg::BowEvent::HOME_REACHED, "home reached", false);
           home_event_sent_ = true;
-          if (cmd_.auto_continue || all_auto_continue) {
-            transitionTo(TaskState::CONFIG_SELECTED, "auto continue from home");
+          if (cmd_.auto_continue || all_auto_continue_) {
+            transitionTo(TaskState::ROTATING, "auto continue from home");
           }
         }
 
@@ -493,7 +520,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
         target.h_target = safe_h_;
         target.l_target = start_l_;
 
-        if (cmd_.auto_continue || all_auto_continue) {
+        if (cmd_.auto_continue || all_auto_continue_) {
           transitionTo(TaskState::ROTATING, "auto continue after config selection");
         }
       } break;
@@ -513,7 +540,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
                          "target angle and pre-contact pose reached", false);
             angle_reached_event_sent_ = true;
           }
-          if (cmd_.auto_continue || all_auto_continue) {
+          if (cmd_.auto_continue || all_auto_continue_) {
             transitionTo(TaskState::LOWER_BOW, "auto continue after rotate");
           }
         }
@@ -525,11 +552,11 @@ class BoroTaskManagerNode : public rclcpp::Node {
         target.h_mode = boro_interfaces::msg::BowTarget::MODE_VELOCITY;
         target.h_velocity_target = cmd_.h_approach_velocity;
 
-        const bool contact_reached = updateContactReachedHysteresis(dt);
+        // const bool contact_reached = updateContactReachedHysteresis(dt);
+        const bool contact_reached = latest_state_.force >= force_contact_on_;
 
         if (contact_reached) {
-          contact_h_ = latest_state_.h;
-          contact_h_valid_ = true;
+          contact_h_ = latest_state_.h + force_h_offset_;
 
           if (!contact_event_sent_) {
             publishEvent(boro_interfaces::msg::BowEvent::CONTACT_REACHED,
@@ -537,7 +564,9 @@ class BoroTaskManagerNode : public rclcpp::Node {
             contact_event_sent_ = true;
           }
 
-          transitionTo(TaskState::CONTACT_SETTLE, "contact detected with hysteresis");
+          // transitionTo(TaskState::CONTACT_SETTLE, "contact detected with hysteresis");
+          transitionTo(TaskState::HOLD_FORCE, "contact detected with hysteresis");
+
         } else if (elapsed > lower_timeout_sec_) {
           fail(boro_interfaces::msg::BowEvent::NO_CONTACT_DETECTED, "contact not detected in time");
           return;
@@ -548,7 +577,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
         target.alpha_target = selectedAlpha();
         target.l_target = start_l_;
         target.h_mode = boro_interfaces::msg::BowTarget::MODE_POSITION;
-        target.h_target = contact_h_valid_ ? contact_h_ : latest_state_.h;
+        target.h_target = contact_h_;
         target.h_velocity_target = 0.0;
         target.h_acceleration_target = 0.0;
 
@@ -558,18 +587,17 @@ class BoroTaskManagerNode : public rclcpp::Node {
         //   settle"); return;
         // }
 
-        const bool h_stable =
-            contact_h_valid_ && near(latest_state_.h, contact_h_, contact_h_tolerance_);
-        const bool force_present = latest_state_.force >= contact_ready_force_min_;
+        const bool h_stable = near(latest_state_.h, contact_h_, contact_h_tolerance_);
+        // const bool force_present = latest_state_.force >= contact_ready_force_min_;
 
-        if (elapsed >= contact_settle_time_sec_ && h_stable && force_present) {
+        if (elapsed >= contact_settle_time_sec_ && h_stable) {
           if (!contact_ready_event_sent_) {
             publishEvent(boro_interfaces::msg::BowEvent::CONTACT_READY, "contact stabilized, ready",
                          false);
             contact_ready_event_sent_ = true;
           }
 
-          if (cmd_.auto_continue || all_auto_continue) {
+          if (cmd_.auto_continue || all_auto_continue_) {
             transitionTo(TaskState::HOLD_FORCE, "contact stabilized");
           }
         }
@@ -577,20 +605,21 @@ class BoroTaskManagerNode : public rclcpp::Node {
 
       case TaskState::HOLD_FORCE: {
         target.alpha_target = selectedAlpha();
-        target.l_target = start_l_;
+        target.l_mode = boro_interfaces::msg::BowTarget::MODE_VELOCITY;
+        target.l_target = 0;
         target.h_mode = boro_interfaces::msg::BowTarget::MODE_FORCE;
         target.force_target = cmd_.desired_force;
 
-        const bool contact_lost = updateContactLostHysteresis(dt);
-        if (contact_lost) {
-          fail(boro_interfaces::msg::BowEvent::CONTACT_LOST, "contact lost before bowing");
-          return;
-        }
+        // const bool contact_lost = updateContactLostHysteresis(dt);
+        // if (contact_lost) {
+        //   fail(boro_interfaces::msg::BowEvent::CONTACT_LOST, "contact lost before bowing");
+        //   return;
+        // }
 
-        if (cmd_.auto_continue || all_auto_continue) {
+        if (cmd_.auto_continue || all_auto_continue_) {
           const bool force_ok = std::abs(latest_state_.force - cmd_.desired_force) <= force_tol_;
           if (force_ok) {
-            // transitionTo(TaskState::BOWING, "auto continue after force hold");
+            transitionTo(TaskState::BOWING, "auto continue after force hold");
           }
         }
       } break;
@@ -600,15 +629,16 @@ class BoroTaskManagerNode : public rclcpp::Node {
         target.h_mode = boro_interfaces::msg::BowTarget::MODE_FORCE;
         target.force_target = cmd_.desired_force;
         target.l_mode = boro_interfaces::msg::BowTarget::MODE_VELOCITY;
-        target.l_velocity_target = cmd_.bow_velocity;
+        // target.l_velocity_target = cmd_.bow_velocity;
+        const double v = -0.1;
+        target.l_velocity_target = v;
 
-        const bool contact_lost = updateContactLostHysteresis(dt);
-        if (contact_lost) {
-          fail(boro_interfaces::msg::BowEvent::CONTACT_LOST, "contact lost during bowing");
-          return;
-        }
+        // const bool contact_lost = updateContactLostHysteresis(dt);
+        // if (contact_lost) {
+        //   fail(boro_interfaces::msg::BowEvent::CONTACT_LOST, "contact lost during bowing");
+        //   return;
+        // }
 
-        const double v = cmd_.bow_velocity;
         const double l_end = (v >= 0.0) ? cmd_.bow_range_max : cmd_.bow_range_min;
         const bool reached_end =
             (v >= 0.0 && latest_state_.l >= l_end) || (v < 0.0 && latest_state_.l <= l_end);
@@ -619,7 +649,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
                          "configured stroke completed", false);
             config_played_event_sent_ = true;
           }
-          if (cmd_.auto_continue || all_auto_continue) {
+          if (cmd_.auto_continue || all_auto_continue_) {
             transitionTo(TaskState::RAISE_BOW, "stroke finished");
           }
         }
@@ -637,7 +667,7 @@ class BoroTaskManagerNode : public rclcpp::Node {
                          false);
             bow_raised_event_sent_ = true;
           }
-          if (cmd_.auto_continue || all_auto_continue) {
+          if (cmd_.auto_continue || all_auto_continue_) {
             transitionTo(TaskState::RETURN_HOME, "safe height reached");
           }
         } else if (elapsed > raise_timeout_sec_) {

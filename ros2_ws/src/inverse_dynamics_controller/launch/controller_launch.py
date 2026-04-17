@@ -1,8 +1,3 @@
-# colcon build --packages-select inverse_dynamics_controller
-# source install/setup.bash
-# ros2 launch inverse_dynamics_controller controller.launch.py
-
-
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
@@ -43,10 +38,13 @@ def generate_launch_description():
                 # ПИД коэффициенты
                 'Mu': 0.3,              # Коэффициент трения
                 
-                'P_a': 30.0,
-                'D_a': 9.0,
-                # 'P_a': 20.0,
-                # 'D_a': 9.0,
+                'P_a_free': 20.0,
+                'I_a_free': 0.0,
+                'D_a_free': 9.0,
+
+                'P_a_contact': 120.0,
+                'I_a_contact': 10.0,
+                'D_a_contact': 1000.0,
 
                 'P_h': 64.0,
                 'D_h': 16.0,
@@ -54,16 +52,16 @@ def generate_launch_description():
 
                 'P_l': 25.0,
                 'D_l': 10.0,
-                # 'P_l': 25.0,
-                # 'D_l': 10.0,
                 'P_vl': 8.0,
 
-                'P_F': 2.0,
-                'I_F': 0.0,
-                'D_F': 3.0,
+                'P_F': 10.0,
+                'I_F': 4.0,
+                'D_F': 0.5,
 
-                'alpha_ctrl': 0.6,      # Фильтр для измеренной силы (0.0 - без фильтра, 1.0 - полностью фильтрованная сила)
-                # 'alpha_ctrl': 0.0,
+                'K_a_contact_ff': 100.0,
+
+                'alpha_ctrl': 0.0,      # Фильтр для измеренной силы (0.0 - без фильтра, 1.0 - полностью фильтрованная сила)
+                'alpha_integral_limit': 1000.0,
                 
                 'F_touch': 0.10,
                 'F_lose': 0.05,

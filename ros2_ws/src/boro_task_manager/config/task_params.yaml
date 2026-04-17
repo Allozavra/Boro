@@ -4,29 +4,29 @@ boro_task_manager_node:
     command_topic: /bow/command
     target_topic: /bow/target
     event_topic: /bow/event
-    loop_hz: 200.0
+    loop_hz: 50.0
     startup_wait_sec: 1.0
     home_alpha: 0.0
     home_h: 0.03
     home_l: 0.0
-    safe_h: 0.020
+    safe_h: 0.02
     start_l: 0.1
     finish_l: -0.1
     home_tol_alpha: 0.05
-    home_tol_h: 0.05
-    home_tol_l: 0.05
-    force_tol: 0.05
-    force_stable_time_sec: 0.20
+    home_tol_h: 0.005
+    home_tol_l: 0.005
+    force_tol: 0.1
+    force_stable_time_sec: 0.1
     force_contact_on: 0.10
-    force_contact_off: 0.01
-    contact_reached_hold_sec: 0.1
+    force_contact_off: 0.05
+    force_h_offset: 0.001
+    contact_reached_hold_sec: 0.01
     contact_lost_hold_sec: 10.0
     contact_settle_time_sec: 10.0
-    contact_h_tolerance: 0.01
+    contact_h_tolerance: 0.005
     contact_ready_force_min: 0.01
 
-    approach_velocity_default: -0.001
-    force_max: 10.0
+    force_max: 200.0
     lower_timeout_sec: 1000.0
     raise_timeout_sec: 1000.0
     home_timeout_sec: 1000.0
@@ -34,7 +34,8 @@ boro_task_manager_node:
     h_max: 0.11
     l_min: -0.41
     l_max: 0.41
-    approach_velocity_default: -0.001
+
+    approach_velocity_default: -0.01
     raise_velocity_default: 0.02
     stroke_velocity_default: 0.05
     desired_force_default: 0.40
