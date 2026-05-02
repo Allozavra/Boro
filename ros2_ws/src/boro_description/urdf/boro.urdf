@@ -91,8 +91,6 @@
   </link>
 
   <link name="bow_contact_frame"/>
-
-  <!-- Если нужно сохранить старую ориентацию contact frame -->
   <joint name="bow_contact_frame_joint" type="fixed">
     <parent link="link3"/>
     <child link="bow_contact_frame"/>

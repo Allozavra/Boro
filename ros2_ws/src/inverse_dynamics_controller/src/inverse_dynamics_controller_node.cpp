@@ -1,5 +1,6 @@
 #include <Eigen/Dense>
 #include <cmath>
+#include <iostream>
 #include <memory>
 #include <pinocchio/algorithm/crba.hpp>
 #include <pinocchio/algorithm/frames.hpp>
@@ -22,10 +23,9 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   InverseDynamicsControllerNode()
       : Node("inverse_dynamics_controller_node"),
         alpha_integral_(0.0),
-        l_velocity_integral_(0.0),
-        force_integral_(0.0),
         target_received_(false),
-        in_contact_(false) {
+        in_contact_(false),
+        filtered_force_(0.0) {
     urdf_path_ = declare_parameter<std::string>("urdf_path", "");
     contact_frame_name_ = declare_parameter<std::string>("contact_frame_name", "bow_contact_frame");
 
@@ -37,56 +37,63 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     init_a_t_ = declare_parameter<double>("init_a_t", 0.0);
     init_ad_t_ = declare_parameter<double>("init_ad_t", 0.0);
     init_add_t_ = declare_parameter<double>("init_add_t", 0.0);
+
     init_h_t_ = declare_parameter<double>("init_h_t", 0.0);
     init_hd_t_ = declare_parameter<double>("init_hd_t", 0.0);
     init_hdd_t_ = declare_parameter<double>("init_hdd_t", 0.0);
+    K_tau_a_ff_ = declare_parameter<double>("K_tau_a_ff", 0.0);
+
     init_l_t_ = declare_parameter<double>("init_l_t", 0.0);
     init_ld_t_ = declare_parameter<double>("init_ld_t", 0.0);
     init_ldd_t_ = declare_parameter<double>("init_ldd_t", 0.0);
+
     init_force_t_ = declare_parameter<double>("init_force_t", 0.0);
 
-    Mu_ = declare_parameter<double>("Mu", 0.3);
+    Mu_ = declare_parameter<double>("Mu", 0.0);
 
-    // PID для alpha без контакта
-    P_a_free_ = declare_parameter<double>("P_a_free", 0.0);
+    // PID для alpha вне контакта
+    P_a_free_ = declare_parameter<double>("P_a_free", 20.0);
     I_a_free_ = declare_parameter<double>("I_a_free", 0.0);
-    D_a_free_ = declare_parameter<double>("D_a_free", 0.0);
+    D_a_free_ = declare_parameter<double>("D_a_free", 9.0);
 
-    // PID для alpha при контакте
-    P_a_contact_ = declare_parameter<double>("P_a_contact", P_a_free_);
-    I_a_contact_ = declare_parameter<double>("I_a_contact", I_a_free_);
-    D_a_contact_ = declare_parameter<double>("D_a_contact", D_a_free_);
+    // PID для alpha в контакте
+    P_a_contact_ = declare_parameter<double>("P_a_contact", 45.0);
+    I_a_contact_ = declare_parameter<double>("I_a_contact", 2.0);
+    D_a_contact_ = declare_parameter<double>("D_a_contact", 14.0);
 
-    P_h_ = declare_parameter<double>("P_h", 0.0);
-    D_h_ = declare_parameter<double>("D_h", 0.0);
-    P_l_ = declare_parameter<double>("P_l", 0.0);
-    D_l_ = declare_parameter<double>("D_l", 0.0);
-    P_vh_ = declare_parameter<double>("P_vh", 10.0);
-    P_vl_ = declare_parameter<double>("P_vl", 10.0);
-    I_vl_ = declare_parameter<double>("I_vl", 10.0);
-    P_F_ = declare_parameter<double>("P_F", 0.0);
-    I_F_ = declare_parameter<double>("I_F", 0.0);
-    D_F_ = declare_parameter<double>("D_F", 0.0);
+    alpha_integral_limit_ = declare_parameter<double>("alpha_integral_limit", 0.2);
+
+    // Обычные контуры по h/l для не-force режимов
+    P_h_ = declare_parameter<double>("P_h", 64.0);
+    D_h_ = declare_parameter<double>("D_h", 16.0);
+    P_l_ = declare_parameter<double>("P_l", 25.0);
+    D_l_ = declare_parameter<double>("D_l", 10.0);
+    P_vh_ = declare_parameter<double>("P_vh", 6.0);
+    P_vl_ = declare_parameter<double>("P_vl", 8.0);
+
+    // Импеданс по h в режиме MODE_FORCE
+    M_h_imp_ = declare_parameter<double>("M_h_imp", 0.08);   // кг
+    D_h_imp_ = declare_parameter<double>("D_h_imp", 8.0);    // Н*с/м
+    K_h_imp_ = declare_parameter<double>("K_h_imp", 250.0);  // Н/м
+    alpha_force_ = declare_parameter<double>("alpha_force", 0.4);
+
+    I_force_ref_ = declare_parameter<double>("I_force_ref", 0.003);
+    h_force_ref_min_ = declare_parameter<double>("h_force_ref_min", -0.01);
+    h_force_ref_max_ = declare_parameter<double>("h_force_ref_max", 0.01);
 
     F_touch_ = declare_parameter<double>("F_touch", 0.10);
     F_lose_ = declare_parameter<double>("F_lose", 0.05);
-    F_integral_limit_ = declare_parameter<double>("force_integral_limit", 10.0);
-    alpha_integral_limit_ = declare_parameter<double>("alpha_integral_limit", 10.0);
-    l_velocity_integral_limit_ = declare_parameter<double>("l_velocity_integral_limit", 10.0);
 
     tau_a_max_ = declare_parameter<double>("tau_a_max", 1000.0);
     tau_h_max_ = declare_parameter<double>("tau_h_max", 1000.0);
     tau_l_max_ = declare_parameter<double>("tau_l_max", 1000.0);
 
     q1_dd_max_ = declare_parameter<double>("q1_dd_max", 1000.0);
-    q2_dd_max_ = declare_parameter<double>("q2_dd_max", 1000.0);
+    q2_dd_max_ = declare_parameter<double>("q2_dd_max", 80.0);
     q3_dd_max_ = declare_parameter<double>("q3_dd_max", 1000.0);
 
     normal_axis_index_ = declare_parameter<int>("normal_axis_index", 2);
     tangent_axis_index_ = declare_parameter<int>("tangent_axis_index", 0);
-
-    alpha_ctrl_ = declare_parameter<double>("alpha_ctrl", 0.0);
-    K_contact_ff_ = declare_parameter<double>("K_contact_ff", 1.0);
 
     if (normal_axis_index_ < 0 || normal_axis_index_ > 2 || tangent_axis_index_ < 0 ||
         tangent_axis_index_ > 2 || normal_axis_index_ == tangent_axis_index_) {
@@ -110,17 +117,21 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
     active_target_.alpha_mode = boro_interfaces::msg::BowTarget::MODE_POSITION;
     active_target_.h_mode = boro_interfaces::msg::BowTarget::MODE_FORCE;
-    active_target_.l_mode = boro_interfaces::msg::BowTarget::MODE_POSITION;
+    active_target_.l_mode = boro_interfaces::msg::BowTarget::MODE_VELOCITY;
+
     active_target_.alpha_target = init_a_t_;
     active_target_.alpha_velocity_target = init_ad_t_;
     active_target_.alpha_acceleration_target = init_add_t_;
+
     active_target_.h_target = init_h_t_;
     active_target_.h_velocity_target = init_hd_t_;
     active_target_.h_acceleration_target = init_hdd_t_;
     active_target_.force_target = init_force_t_;
+
     active_target_.l_target = init_l_t_;
     active_target_.l_velocity_target = init_ld_t_;
     active_target_.l_acceleration_target = init_ldd_t_;
+
     active_target_.enable = true;
     active_target_.source_state = "BOOT_DEFAULT";
 
@@ -147,16 +158,17 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   int normal_axis_index_{};
   int tangent_axis_index_{};
 
-  double init_a_t_;
-  double init_ad_t_;
-  double init_add_t_;
-  double init_h_t_;
-  double init_hd_t_;
-  double init_hdd_t_;
-  double init_l_t_;
-  double init_ld_t_;
-  double init_ldd_t_;
-  double init_force_t_;
+  double init_a_t_{};
+  double init_ad_t_{};
+  double init_add_t_{};
+  double init_h_t_{};
+  double init_hd_t_{};
+  double init_hdd_t_{};
+  double K_tau_a_ff_{};
+  double init_l_t_{};
+  double init_ld_t_{};
+  double init_ldd_t_{};
+  double init_force_t_{};
 
   double Mu_{};
 
@@ -168,7 +180,7 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   double I_a_contact_{};
   double D_a_contact_{};
 
-  double alpha_integral_;
+  double alpha_integral_{};
   double alpha_integral_limit_{};
 
   double P_h_{};
@@ -177,31 +189,29 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   double D_l_{};
   double P_vh_{};
   double P_vl_{};
-  double I_vl_{};
-  double l_velocity_integral_{};
-  double l_velocity_integral_limit_{};
 
-  double P_F_{};
-  double I_F_{};
-  double D_F_{};
+  double M_h_imp_{};
+  double D_h_imp_{};
+  double K_h_imp_{};
+  double alpha_force_{};
+  double filtered_force_{};
+
+  double h_force_ref_{0.0};
+  bool h_force_ref_initialized_{false};
+  double I_force_ref_{};
+  double h_force_ref_min_{};
+  double h_force_ref_max_{};
 
   double F_touch_{};
   double F_lose_{};
-  double F_integral_limit_{};
 
   double tau_a_max_{};
   double tau_h_max_{};
   double tau_l_max_{};
-
   double q1_dd_max_{};
   double q2_dd_max_{};
   double q3_dd_max_{};
 
-  double alpha_ctrl_{};
-  double F_ctrl_{0.0};
-  double K_contact_ff_{};
-
-  double force_integral_;
   bool target_received_;
   bool in_contact_;
   rclcpp::Time last_time_;
@@ -222,16 +232,12 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
   void initPinocchio(const std::string& urdf_path, const std::string& contact_frame_name) {
     if (urdf_path.empty()) throw std::runtime_error("Parameter 'urdf_path' is empty");
-
     pinocchio::urdf::buildModel(urdf_path, model_);
     data_ = pinocchio::Data(model_);
-
     if (!model_.existFrame(contact_frame_name)) {
       throw std::runtime_error("Contact frame not found in URDF: " + contact_frame_name);
     }
-
     contact_frame_id_ = model_.getFrameId(contact_frame_name);
-
     if (model_.nq != 3 || model_.nv != 3) {
       throw std::runtime_error("URDF size mismatch, expected 3 DOF robot");
     }
@@ -267,7 +273,6 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     J6.setZero();
     pinocchio::getFrameJacobian(model_, data_, contact_frame_id_, pinocchio::ReferenceFrame::WORLD,
                                 J6);
-
     const Eigen::MatrixXd Jv = J6.bottomRows(3);
     Jn = Jv.transpose() * normal_world;
     Jt = Jv.transpose() * tangent_world;
@@ -294,9 +299,9 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
         alpha_integral_ += a_error * dt;
         alpha_integral_ = clamp(alpha_integral_, -alpha_integral_limit_, alpha_integral_limit_);
 
-        double qdd = active_target_.alpha_acceleration_target +
-                     D * (active_target_.alpha_velocity_target - ad) + P * a_error +
-                     I * alpha_integral_;
+        const double qdd = active_target_.alpha_acceleration_target +
+                           D * (active_target_.alpha_velocity_target - ad) + P * a_error +
+                           I * alpha_integral_;
 
         return clamp(qdd, -q1_dd_max_, q1_dd_max_);
       }
@@ -306,25 +311,45 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
   double computeHdd(double h, double hd, double F_meas, double dt) {
     switch (active_target_.h_mode) {
       case boro_interfaces::msg::BowTarget::MODE_OFF:
-        force_integral_ = 0.0;
+        filtered_force_ = F_meas;
+        h_force_ref_initialized_ = false;
         return 0.0;
 
       case boro_interfaces::msg::BowTarget::MODE_FORCE: {
-        F_ctrl_ = alpha_ctrl_ * F_ctrl_ + (1.0 - alpha_ctrl_) * F_meas;
-        const double force_error = -active_target_.force_target + F_ctrl_;
-        force_integral_ += force_error * dt;
-        force_integral_ = clamp(force_integral_, -F_integral_limit_, F_integral_limit_);
-        return clamp(P_F_ * force_error + I_F_ * force_integral_ - D_F_ * hd, -q2_dd_max_,
-                     q2_dd_max_);
+        filtered_force_ = alpha_force_ * filtered_force_ + (1.0 - alpha_force_) * F_meas;
+
+        // При первом входе в силовой режим защёлкиваем текущую контактную позу
+        if (!h_force_ref_initialized_) {
+          h_force_ref_ = h;
+          h_force_ref_initialized_ = true;
+        }
+
+        // Внешний медленный интегратор по силе:
+        // двигает h_force_ref_, чтобы убрать статическую ошибку по силе
+        const double force_error_outer = -active_target_.force_target + filtered_force_;
+        h_force_ref_ += I_force_ref_ * force_error_outer * dt;
+        h_force_ref_ = clamp(h_force_ref_, h_force_ref_min_, h_force_ref_max_);
+
+        const double F_error = filtered_force_ - active_target_.force_target;
+        const double h_error = h - h_force_ref_;
+        const double hd_error = hd - active_target_.h_velocity_target;
+
+        const double Md = std::max(M_h_imp_, 1e-6);
+        const double qdd = active_target_.h_acceleration_target +
+                           (F_error - D_h_imp_ * hd_error - K_h_imp_ * h_error) / Md;
+
+        return clamp(qdd, -q2_dd_max_, q2_dd_max_);
       }
 
       case boro_interfaces::msg::BowTarget::MODE_VELOCITY:
-        force_integral_ = 0.0;
+        filtered_force_ = F_meas;
+        h_force_ref_initialized_ = false;
         return clamp(P_vh_ * (active_target_.h_velocity_target - hd), -q2_dd_max_, q2_dd_max_);
 
       case boro_interfaces::msg::BowTarget::MODE_POSITION:
       default:
-        force_integral_ = 0.0;
+        filtered_force_ = F_meas;
+        h_force_ref_initialized_ = false;
         return clamp(active_target_.h_acceleration_target +
                          D_h_ * (active_target_.h_velocity_target - hd) +
                          P_h_ * (active_target_.h_target - h),
@@ -332,25 +357,16 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     }
   }
 
-  double computeLdd(double l, double ld, double dt) {
+  double computeLdd(double l, double ld) const {
     switch (active_target_.l_mode) {
       case boro_interfaces::msg::BowTarget::MODE_OFF:
-        l_velocity_integral_ = 0.0;
         return 0.0;
 
-      case boro_interfaces::msg::BowTarget::MODE_VELOCITY: {
-        const double l_velocity_error = active_target_.l_velocity_target - ld;
-        l_velocity_integral_ += l_velocity_error * dt;
-        l_velocity_integral_ =
-            clamp(l_velocity_integral_, -l_velocity_integral_limit_, l_velocity_integral_limit_);
-
-        return clamp(P_vl_ * l_velocity_error + I_vl_ * l_velocity_integral_, -q3_dd_max_,
-                     q3_dd_max_);
-      }
+      case boro_interfaces::msg::BowTarget::MODE_VELOCITY:
+        return clamp(P_vl_ * (active_target_.l_velocity_target - ld), -q3_dd_max_, q3_dd_max_);
 
       case boro_interfaces::msg::BowTarget::MODE_POSITION:
       default:
-        l_velocity_integral_ = 0.0;
         return clamp(active_target_.l_acceleration_target +
                          D_l_ * (active_target_.l_velocity_target - ld) +
                          P_l_ * (active_target_.l_target - l),
@@ -373,7 +389,7 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     state_msg.controller_ready = true;
     state_msg.target_received = target_received_;
     state_msg.active_state = active_target_.source_state;
-    state_msg.controller_mode = "ID + mixed position/velocity/force";
+    state_msg.controller_mode = "ID + impedance force on h";
     pub_state_->publish(state_msg);
   }
 
@@ -403,14 +419,17 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
       return;
     }
 
+    bool prev_contact = in_contact_;
     if (!in_contact_ && F_meas >= F_touch_) {
       in_contact_ = true;
-      force_integral_ = 0.0;
-      alpha_integral_ = 0.0;
     } else if (in_contact_ && F_meas <= F_lose_) {
       in_contact_ = false;
-      force_integral_ = 0.0;
+    }
+    if (prev_contact != in_contact_) {
       alpha_integral_ = 0.0;
+      if (!in_contact_) {
+        h_force_ref_initialized_ = false;
+      }
     }
 
     publishState(now_t, a, h, l, ad, hd, ld, F_meas);
@@ -430,7 +449,10 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
 
     const double q1_dd = computeAdd(a, ad, dt);
     const double q2_dd = computeHdd(h, hd, F_meas, dt);
-    const double q3_dd = computeLdd(l, ld, dt);
+    const double q3_dd = computeLdd(l, ld);
+
+    Eigen::VectorXd qdd_t(3);
+    qdd_t << q1_dd, q2_dd, q3_dd;
 
     Eigen::MatrixXd M = computeM(q);
     Eigen::VectorXd Cqd = computeCqd(q, v);
@@ -439,41 +461,17 @@ class InverseDynamicsControllerNode : public rclcpp::Node {
     computeContactTerms(q, Jn, Jt);
 
     if (!M.allFinite() || !vectorAllFinite(Cqd) || !vectorAllFinite(G) || !vectorAllFinite(Jn) ||
-        !vectorAllFinite(Jt)) {
+        !vectorAllFinite(Jt) || !vectorAllFinite(qdd_t)) {
       RCLCPP_ERROR(get_logger(), "NaN/Inf in model terms");
       return;
     }
 
     const double F_n = std::max(0.0, F_meas);
-    const double F_t_contact = Mu_ * F_n;
+    const double F_t_contact = 0.0;
+    Eigen::VectorXd tau_ext = Jn * F_n + Jt * F_t_contact;
 
-    Eigen::VectorXd tau_contact = Jn * F_n + Jt * F_t_contact;
-    if (!vectorAllFinite(tau_contact)) {
-      RCLCPP_ERROR(get_logger(), "tau_contact has NaN/Inf");
-      return;
-    }
-
-    Eigen::VectorXd qdd_t(3);
-    qdd_t << q1_dd, q2_dd, q3_dd;
-
-    if (active_target_.h_mode == boro_interfaces::msg::BowTarget::MODE_FORCE &&
-        std::abs(K_contact_ff_) > 1e-12) {
-      Eigen::VectorXd qdd_contact_ff = K_contact_ff_ * M.ldlt().solve(tau_contact);
-
-      if (!vectorAllFinite(qdd_contact_ff)) {
-        RCLCPP_ERROR(get_logger(), "qdd_contact_ff has NaN/Inf");
-        return;
-      }
-
-      qdd_t += qdd_contact_ff;
-    }
-
-    if (!vectorAllFinite(qdd_t)) {
-      RCLCPP_ERROR(get_logger(), "qdd_t has NaN/Inf");
-      return;
-    }
-
-    Eigen::VectorXd tau = M * qdd_t + Cqd + G - tau_contact;
+    Eigen::VectorXd tau = M * qdd_t + Cqd + G - tau_ext;
+    tau(0) += K_tau_a_ff_ * tau_ext(0);
 
     if (!vectorAllFinite(tau)) {
       RCLCPP_ERROR(get_logger(), "tau has NaN/Inf");
